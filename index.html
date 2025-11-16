@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交互地图</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useRef, useEffect } = React;
+
+        function VideoHotspot({ videoSrc, centerX, centerY, width, height, onHoverChange, videoId, buttonCenterX, buttonCenterY }) {
+            const videoRef = useRef(null);
+            const [isFullscreen, setIsFullscreen] = useState(false);
+
+            const handleMouseEnter = () => {
+                onHoverChange(videoId);
+                if (videoRef.current && !isFullscreen) {
+                    videoRef.current.play();
+                }
+            };
+
+            const handleMouseLeave = () => {
+                if (videoRef.current && !isFullscreen) {
+                    videoRef.current.pause();
+                }
+            };
+
+            const openFullscreen = () => {
+                if (videoRef.current) {
+                    videoRef.current.muted = false;
+                    const element = videoRef.current;
+
+                    if (element.requestFullscreen) {
+                        element.requestFullscreen();
+                    } else if (element.webkitRequestFullscreen) {
+                        element.webkitRequestFullscreen();
+                    } else if (element.mozRequestFullScreen) {
+                        element.mozRequestFullScreen();
+                    } else if (element.msRequestFullscreen) {
+                        element.msRequestFullscreen();
+                    }
+
+                    videoRef.current.play();
+                    setIsFullscreen(true);
+                }
+            };
+
+            useEffect(() => {
+                const handleFullscreenChange = () => {
+                    if (!document.fullscreenElement &&
+                        !document.webkitFullscreenElement &&
+                        !document.mozFullScreenElement &&
+                        !document.msFullscreenElement) {
+                        if (videoRef.current) {
+                            videoRef.current.muted = true;
+                            videoRef.current.pause();
+                        }
+                        setIsFullscreen(false);
+                    }
+                };
+
+                document.addEventListener('fullscreenchange', handleFullscreenChange);
+                document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+                document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+                document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+                return () => {
+                    document.removeEventListener('fullscreenchange', handleFullscreenChange);
+                    document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+                    document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+                    document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+                };
+            }, []);
+
+            return (
+                <React.Fragment>
+                    <div
+                        className="absolute"
+                        style={{
+                            left: centerX,
+                            top: centerY,
+                            width: width,
+                            height: height,
+                            transform: 'translate(-50%, -50%)',
+                            cursor: 'pointer'
+                        }}
+                        onMouseEnter={handleMouseEnter}
+                        onMouseLeave={handleMouseLeave}
+                        onDoubleClick={openFullscreen}
+                    >
+                        <video
+                            ref={videoRef}
+                            className="w-full h-full object-cover"
+                            muted
+                            loop
+                            playsInline
+                        >
+                            <source src={videoSrc} type="video/mp4" />
+                        </video>
+
+                    </div>
+
+                    {buttonCenterX && buttonCenterY && (
+                        <div
+                            className="absolute"
+                            style={{
+                                left: buttonCenterX,
+                                top: buttonCenterY,
+                                width: '8%',
+                                height: '4%',
+                                transform: 'translate(-50%, -50%)',
+                                cursor: 'pointer',
+                                zIndex: 5
+                            }}
+                            onClick={openFullscreen}
+                        />
+                    )}
+                </React.Fragment>
+            );
+        }
+
+        function StepHotspot({ centerX, centerY, width, height, stepImage, fullImage, imageLeft = '8%' }) {
+            const [isHovered, setIsHovered] = useState(false);
+
+            const openFullscreen = () => {
+                const img = document.createElement('img');
+                img.src = fullImage || stepImage;
+                img.style.cssText = 'max-width: 90vw; max-height: 90vh; object-fit: contain; margin: auto; display: block;';
+
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(255,255,255,0.58); backdrop-filter: blur(8px) saturate(120%); -webkit-backdrop-filter: blur(8px) saturate(120%); border: 1px solid rgba(255,255,255,0.24); box-shadow: inset 0 0 14px rgba(255,255,255,0.28), 0 8px 18px rgba(110,125,150,0.1); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: pointer; animation: overlayFade 0.26s ease-out forwards;';
+                overlay.onclick = () => overlay.remove();
+
+                overlay.appendChild(img);
+                document.body.appendChild(overlay);
+            };
+
+            return (
+                <div
+                    className="absolute"
+                    style={{
+                        left: centerX,
+                        top: centerY,
+                        width: width,
+                        height: height,
+                        transform: 'translate(-50%, -50%)',
+                        cursor: 'pointer',
+                        zIndex: 10
+                    }}
+                    onMouseEnter={() => setIsHovered(true)}
+                    onMouseLeave={() => setIsHovered(false)}
+                    onClick={openFullscreen}
+                >
+                    {isHovered && (
+                        <div
+                            className="absolute animate-fadeInScale"
+                            style={{
+                                left: imageLeft,
+                                bottom: '100%',
+                                transform: 'translateX(-50%)',
+                                marginBottom: '15px',
+                                width: '180px',
+                                zIndex: 100,
+                                pointerEvents: 'none',
+                                backgroundColor: 'transparent'
+                            }}
+                        >
+                            <img
+                                src={stepImage}
+                                alt="step detail"
+                                style={{
+                                    width: '100%',
+                                    height: 'auto',
+                                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+                                    display: 'block',
+                                    backgroundColor: 'transparent'
+                                }}
+                            />
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function StationButton({ centerX, centerY, onClick }) {
+            return (
+                <div
+                    className="absolute"
+                    style={{
+                        left: centerX,
+                        top: centerY,
+                        transform: 'translate(-50%, -50%)',
+                        cursor: 'pointer'
+                    }}
+                    onClick={onClick}
+                >
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="station-pulse-ring"></div>
+                    </div>
+                    <div className="station-dot"></div>
+                </div>
+            );
+        }
+
+        function App() {
+            const [hoveredVideo, setHoveredVideo] = useState('video4');
+            const [currentScene, setCurrentScene] = useState('scene1');
+            const [hoveredTriangle, setHoveredTriangle] = useState(null);
+            const [showScrollGuide, setShowScrollGuide] = useState(false);
+            const [scene4Height, setScene4Height] = useState(0);
+            const [scene4Ready, setScene4Ready] = useState(false);
+            const scrollContainerRef = useRef(null);
+            const guideTimerRef = useRef(null);
+            const floatingImageRefs = useRef({});
+            const scene4ImageRef = useRef(null);
+
+            useEffect(() => {
+                ['第二层级step图片/step-01.jpg', '第二层级step图片/step-02.jpg', '第二层级step图片/step-03.jpg', '第二层级step图片/step-04.jpg', '第二层级step图片/step-05.jpg', '第二层级step图片/step-06.jpg', '第二层级step图片/step1.png', '第二层级step图片/step2.png', '第二层级step图片/step3.png', '第二层级step图片/step4.png', '第二层级step图片/step5.png', '第二层级step图片/step6.png'].forEach(src => {
+                    const img = new Image();
+                    img.src = src;
+                });
+                ['悬浮图片-01.jpg','悬浮图片-02.jpg','悬浮图片-03.jpg','悬浮图片-04.jpg','悬浮图片-05.jpg','悬浮图片-06.jpg','悬浮图片-07.jpg'].forEach(src => {
+                    const img = new Image();
+                    img.src = src;
+                });
+            }, []);
+
+            useEffect(() => {
+                if (currentScene !== 'scene3' && currentScene !== 'scene5') {
+                    setShowScrollGuide(false);
+                    return;
+                }
+                setShowScrollGuide(true);
+                if (guideTimerRef.current) {
+                    clearTimeout(guideTimerRef.current);
+                }
+                guideTimerRef.current = setTimeout(() => setShowScrollGuide(false), 2500);
+                return () => {
+                    if (guideTimerRef.current) {
+                        clearTimeout(guideTimerRef.current);
+                        guideTimerRef.current = null;
+                    }
+                };
+            }, [currentScene]);
+
+            useEffect(() => {
+                if (currentScene !== 'scene4') return;
+                const container = scrollContainerRef.current;
+                if (!container) return;
+
+                const updateVisibility = () => {
+                    Object.values(floatingImageRefs.current).forEach((el) => {
+                        if (!el) return;
+                        const rect = el.getBoundingClientRect();
+                        if (rect.bottom > 0 && rect.top < window.innerHeight) {
+                            el.style.opacity = '1';
+                        } else {
+                            el.style.opacity = '0';
+                        }
+                    });
+                };
+
+                updateVisibility();
+                container.addEventListener('scroll', updateVisibility, { passive: true });
+                window.addEventListener('resize', updateVisibility);
+
+                return () => {
+                    container.removeEventListener('scroll', updateVisibility);
+                    window.removeEventListener('resize', updateVisibility);
+                };
+            }, [currentScene]);
+
+            useEffect(() => {
+                if (currentScene !== 'scene4') return;
+                const updateHeight = () => {
+                    if (!scene4ImageRef.current) return;
+                    const imgEl = scene4ImageRef.current;
+                    const measuredHeight = imgEl.offsetHeight || imgEl.naturalHeight;
+                    if (measuredHeight > 0) {
+                        setScene4Height(measuredHeight);
+                        setScene4Ready(true);
+                    }
+                };
+                updateHeight();
+                window.addEventListener('resize', updateHeight);
+                return () => {
+                    window.removeEventListener('resize', updateHeight);
+                };
+            }, [currentScene]);
+
+            const handleSceneSwitch = () => {
+                if (currentScene === 'scene1') {
+                    setCurrentScene('scene2');
+                    setHoveredVideo(null);
+                } else {
+                    setCurrentScene('scene1');
+                    setHoveredVideo('video4');
+                }
+            };
+
+            const handleTriangleClick = (triangleId) => {
+                if (triangleId === 'triangle1') {
+                    setCurrentScene('scene3');
+                    setHoveredVideo(null);
+                } else if (triangleId === 'triangle2') {
+                    setCurrentScene('scene4');
+                    setHoveredVideo(null);
+                } else if (triangleId === 'triangle3') {
+                    setCurrentScene('scene5');
+                    setHoveredVideo(null);
+                }
+                setHoveredTriangle(null);
+            };
+
+            const handleBackToScene1 = () => {
+                setCurrentScene('scene1');
+                setHoveredVideo('video4');
+                setHoveredTriangle(null);
+            };
+
+            const handleFloatingImageClick = (imageSrc) => {
+                const img = document.createElement('img');
+            useEffect(() => {
+                if (currentScene !== 'scene1') {
+                    setHoveredTriangle(null);
+                }
+            }, [currentScene]);
+
+                img.src = imageSrc;
+                img.style.cssText = 'max-width: 88vw; max-height: 88vh; object-fit: contain; margin: auto; display: block;';
+
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(255,255,255,0.58); backdrop-filter: blur(8px) saturate(120%); -webkit-backdrop-filter: blur(8px) saturate(120%); border: 1px solid rgba(255,255,255,0.24); box-shadow: inset 0 0 14px rgba(255,255,255,0.28), 0 8px 18px rgba(110,125,150,0.1); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: pointer; animation: overlayFade 0.26s ease-out forwards;';
+                overlay.onclick = () => overlay.remove();
+
+                overlay.appendChild(img);
+                document.body.appendChild(overlay);
+            };
+
+            const floatingImages = [
+                { id: 'float1', left: '20%', topRatio: 0.32, width: '12%', delay: '0s', duration: '20s', image: '悬浮图片-01.jpg', dx1: '120px', dy1: '-160px', dx2: '-150px', dy2: '120px' },
+                { id: 'float2', left: '78%', topRatio: 0.44, width: '10%', delay: '2s', duration: '22s', image: '悬浮图片-02.jpg', dx1: '-140px', dy1: '-140px', dx2: '160px', dy2: '130px' },
+                { id: 'float3', left: '24%', topRatio: 0.56, width: '11%', delay: '4s', duration: '18s', image: '悬浮图片-03.jpg', dx1: '150px', dy1: '120px', dx2: '-120px', dy2: '-160px' },
+                { id: 'float4', left: '75%', topRatio: 0.68, width: '9%', delay: '6s', duration: '21s', image: '悬浮图片-04.jpg', dx1: '140px', dy1: '-150px', dx2: '-160px', dy2: '110px' },
+                { id: 'float5', left: '28%', topRatio: 0.80, width: '10%', delay: '8s', duration: '23s', image: '悬浮图片-05.jpg', dx1: '-160px', dy1: '140px', dx2: '150px', dy2: '-140px' },
+                { id: 'float6', left: '74%', topRatio: 0.90, width: '12%', delay: '10s', duration: '24s', image: '悬浮图片-06.jpg', dx1: '170px', dy1: '150px', dx2: '-150px', dy2: '-170px' },
+                { id: 'float7', left: '32%', topRatio: 0.98, width: '10%', delay: '12s', duration: '26s', image: '悬浮图片-07.jpg', dx1: '-170px', dy1: '-150px', dx2: '180px', dy2: '160px' }
+            ];
+
+            return (
+                <div className="w-screen h-screen bg-white">
+                    {currentScene === 'scene3' ? (
+                        <div
+                            ref={scrollContainerRef}
+                            className="w-full h-full overflow-y-auto overflow-x-hidden relative"
+                        >
+                            <img
+                                src="滚动网页-地铁专线.jpg"
+                                alt="地铁专线"
+                                className="w-full h-auto"
+                                style={{ minHeight: '100vh' }}
+                            />
+
+                            {showScrollGuide && (
+                                <div
+                                    className="fixed bottom-8 left-1/2 transform -translate-x-1/2 pointer-events-none"
+                                    style={{ zIndex: 9998, animation: 'bounceDown 1.5s ease-in-out infinite' }}
+                                >
+                                    <div
+                                        style={{
+                                            width: 0,
+                                            height: 0,
+                                            borderLeft: '12px solid transparent',
+                                            borderRight: '12px solid transparent',
+                                            borderTop: '20px solid rgba(0, 0, 0, 0.6)'
+                                        }}
+                                    />
+                                </div>
+                            )}
+
+                            <button
+                                onClick={handleBackToScene1}
+                                className="fixed cursor-pointer z-50"
+                                style={{ top: 'calc(1.7% - 8px)', left: '8px', zIndex: 9999, width: '24px', height: '24px', border: 'none', background: 'none', padding: 0 }}
+                            >
+                                <div
+                                    style={{
+                                        width: 0,
+                                        height: 0,
+                                        borderTop: '7px solid transparent',
+                                        borderBottom: '7px solid transparent',
+                                        borderRight: '11px solid rgba(0, 0, 0, 0.6)',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.target.style.borderRightColor = 'rgba(0, 0, 0, 0.9)';
+                                        e.target.style.transform = 'scale(1.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.borderRightColor = 'rgba(0, 0, 0, 0.6)';
+                                        e.target.style.transform = 'scale(1)';
+                                    }}
+                                />
+                            </button>
+                        </div>
+                    ) : currentScene === 'scene4' ? (
+                        <div
+                            ref={scrollContainerRef}
+                            className="w-full h-full overflow-y-auto overflow-x-hidden relative"
+                        >
+                            <img
+                                ref={scene4ImageRef}
+                                src="滚动网页-访谈.jpg"
+                                alt="访谈"
+                                className="w-full h-auto"
+                                style={{ minHeight: '100vh' }}
+                                onLoad={() => {
+                                    if (!scene4ImageRef.current) return;
+                                    const imgEl = scene4ImageRef.current;
+                                    const measuredHeight = imgEl.offsetHeight || imgEl.naturalHeight;
+                                    if (measuredHeight > 0) {
+                                        setScene4Height(measuredHeight);
+                                        setScene4Ready(true);
+                                    }
+                                }}
+                            />
+
+                            {scene4Ready && floatingImages.map(item => (
+                                <div
+                                    key={item.id}
+                                    className="absolute floating-image-wrapper"
+                                    style={{
+                                        left: item.left,
+                                        top: scene4Height ? `${item.topRatio * scene4Height}px` : `${item.topRatio * 100}vh`,
+                                        transform: 'translate(-50%, -50%)',
+                                        width: item.width,
+                                        cursor: 'pointer',
+                                        zIndex: 30,
+                                        opacity: 0,
+                                        transition: 'opacity 0.45s ease'
+                                    }}
+                                    onClick={() => handleFloatingImageClick(item.image)}
+                                    ref={(el) => { floatingImageRefs.current[item.id] = el; }}
+                                >
+                                    <img
+                                        src={item.image}
+                                        alt="访谈浮动"
+                                        className="floating-image-item"
+                                        style={{
+                                            width: '100%',
+                                            height: 'auto',
+                                            transition: 'opacity 0.5s ease',
+                                            '--float-delay': item.delay,
+                                            '--float-duration': item.duration,
+                                            '--dx1': item.dx1,
+                                            '--dy1': item.dy1,
+                                            '--dx2': item.dx2,
+                                            '--dy2': item.dy2
+                                        }}
+                                    />
+                                </div>
+                            ))}
+
+                            <button
+                                onClick={handleBackToScene1}
+                                className="fixed cursor-pointer z-50"
+                                style={{ top: 'calc(1.5% - 8px)', left: '8px', zIndex: 9999, width: '24px', height: '24px', border: 'none', background: 'none', padding: 0 }}
+                            >
+                                <div
+                                    style={{
+                                        width: 0,
+                                        height: 0,
+                                        borderTop: '7px solid transparent',
+                                        borderBottom: '7px solid transparent',
+                                        borderRight: '11px solid rgba(0, 0, 0, 0.6)',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.target.style.borderRightColor = 'rgba(0, 0, 0, 0.9)';
+                                        e.target.style.transform = 'scale(1.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.borderRightColor = 'rgba(0, 0, 0, 0.6)';
+                                        e.target.style.transform = 'scale(1)';
+                                    }}
+                                />
+                            </button>
+                        </div>
+                    ) : currentScene === 'scene5' ? (
+                        <div
+                            ref={scrollContainerRef}
+                            className="w-full h-full overflow-y-auto overflow-x-hidden relative"
+                        >
+                            <img
+                                src="滚动网页-防空洞.jpg"
+                                alt="防空洞"
+                                className="w-full h-auto"
+                                style={{ minHeight: '100vh' }}
+                            />
+
+                            {showScrollGuide && (
+                                <div
+                                    className="fixed bottom-8 left-1/2 transform -translate-x-1/2 pointer-events-none"
+                                    style={{ zIndex: 9998, animation: 'bounceDown 1.5s ease-in-out infinite' }}
+                                >
+                                    <div
+                                        style={{
+                                            width: 0,
+                                            height: 0,
+                                            borderLeft: '12px solid transparent',
+                                            borderRight: '12px solid transparent',
+                                            borderTop: '20px solid rgba(0, 0, 0, 0.6)'
+                                        }}
+                                    />
+                                </div>
+                            )}
+
+                            <button
+                                onClick={handleBackToScene1}
+                                className="fixed cursor-pointer z-50"
+                                style={{ top: 'calc(1.5% - 8px)', left: '8px', zIndex: 9999, width: '24px', height: '24px', border: 'none', background: 'none', padding: 0 }}
+                            >
+                                <div
+                                    style={{
+                                        width: 0,
+                                        height: 0,
+                                        borderTop: '7px solid transparent',
+                                        borderBottom: '7px solid transparent',
+                                        borderRight: '11px solid rgba(0, 0, 0, 0.6)',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.target.style.borderRightColor = 'rgba(0, 0, 0, 0.9)';
+                                        e.target.style.transform = 'scale(1.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.borderRightColor = 'rgba(0, 0, 0, 0.6)';
+                                        e.target.style.transform = 'scale(1)';
+                                    }}
+                                />
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="w-screen h-screen flex items-center justify-center overflow-hidden">
+                            <div style={{ width: '100%', height: '100%', maxWidth: '177.78vh', maxHeight: '56.25vw' }} className="relative">
+                                <div className="scene-box relative w-full h-full">
+                                    <img
+                                        src={currentScene === 'scene1' ? 'grade1.jpg' : 'grade2.jpg'}
+                                        alt="背景"
+                                        className="absolute w-full h-full object-contain transition-opacity duration-500"
+                                    />
+
+                                    {currentScene === 'scene1' && (
+                                        <div className="scene-content">
+                                            <VideoHotspot
+                                                videoSrc="出站.mp4"
+                                                centerX="24.5%"
+                                                centerY="44%"
+                                                width="13.53%"
+                                                height="14.12%"
+                                                videoId="video1"
+                                                onHoverChange={setHoveredVideo}
+                                                buttonCenterX="24.5%"
+                                                buttonCenterY="54%"
+                                            />
+
+                                            <VideoHotspot
+                                                videoSrc="换乘.mp4"
+                                                centerX="48%"
+                                                centerY="27%"
+                                                width="13.53%"
+                                                height="14.12%"
+                                                videoId="video2"
+                                                onHoverChange={setHoveredVideo}
+                                                buttonCenterX="48%"
+                                                buttonCenterY="37%"
+                                            />
+
+                                            <VideoHotspot
+                                                videoSrc="中途.mp4"
+                                                centerX="60.2%"
+                                                centerY="58.8%"
+                                                width="13.53%"
+                                                height="14.12%"
+                                                videoId="video3"
+                                                onHoverChange={setHoveredVideo}
+                                                buttonCenterX="60.2%"
+                                                buttonCenterY="68.8%"
+                                            />
+
+                                            <VideoHotspot
+                                                videoSrc="始发站.mp4"
+                                                centerX="88.2%"
+                                                centerY="57.8%"
+                                                width="13.53%"
+                                                height="14.12%"
+                                                videoId="video4"
+                                                onHoverChange={setHoveredVideo}
+                                                buttonCenterX="88.2%"
+                                                buttonCenterY="67.8%"
+                                            />
+
+                                            <StationButton
+                                                centerX="31.3%"
+                                                centerY="34.35%"
+                                                onClick={handleSceneSwitch}
+                                            />
+
+                                            <div
+                                                className={`absolute triangle-arrow ${hoveredTriangle === 'triangle1' ? 'active' : ''}`}
+                                                style={{
+                                                    position: 'absolute',
+                                                    left: '78%',
+                                                    top: '87.2%',
+                                                    width: 0,
+                                                    height: 0,
+                                                    borderLeft: '4px solid transparent',
+                                                    borderRight: '4px solid transparent',
+                                                    borderBottom: '7px solid #000',
+                                                    cursor: 'pointer'
+                                                }}
+                                                onMouseEnter={() => setHoveredTriangle('triangle1')}
+                                                onMouseLeave={() => setHoveredTriangle(null)}
+                                                onClick={() => handleTriangleClick('triangle1')}
+                                            />
+
+                                            <div
+                                                className={`absolute triangle-arrow ${hoveredTriangle === 'triangle2' ? 'active' : ''}`}
+                                                style={{
+                                                    position: 'absolute',
+                                                    left: '78%',
+                                                    top: '90.5%',
+                                                    width: 0,
+                                                    height: 0,
+                                                    borderLeft: '4px solid transparent',
+                                                    borderRight: '4px solid transparent',
+                                                    borderBottom: '7px solid #000',
+                                                    cursor: 'pointer'
+                                                }}
+                                                onMouseEnter={() => setHoveredTriangle('triangle2')}
+                                                onMouseLeave={() => setHoveredTriangle(null)}
+                                                onClick={() => handleTriangleClick('triangle2')}
+                                            />
+
+                                            <div
+                                                className={`absolute triangle-arrow ${hoveredTriangle === 'triangle3' ? 'active' : ''}`}
+                                                style={{
+                                                    position: 'absolute',
+                                                    left: '78%',
+                                                    top: '93.8%',
+                                                    width: 0,
+                                                    height: 0,
+                                                    borderLeft: '4px solid transparent',
+                                                    borderRight: '4px solid transparent',
+                                                    borderBottom: '7px solid #000',
+                                                    cursor: 'pointer'
+                                                }}
+                                                onMouseEnter={() => setHoveredTriangle('triangle3')}
+                                                onMouseLeave={() => setHoveredTriangle(null)}
+                                                onClick={() => handleTriangleClick('triangle3')}
+                                            />
+
+                                            {currentScene === 'scene1' && hoveredVideo === 'video1' && (
+                                                <div className="absolute inset-0 pointer-events-none animate-fadeInScale">
+                                                    <img src="4-suxie.png" alt="overlay" className="w-full h-full object-contain" />
+                                                </div>
+                                            )}
+                                            {currentScene === 'scene1' && hoveredVideo === 'video2' && (
+                                                <div className="absolute inset-0 pointer-events-none animate-fadeInScale">
+                                                    <img src="3-suxie.png" alt="overlay" className="w-full h-full object-contain" />
+                                                </div>
+                                            )}
+                                            {currentScene === 'scene1' && hoveredVideo === 'video3' && (
+                                                <div className="absolute inset-0 pointer-events-none animate-fadeInScale">
+                                                    <img src="2-suxie.png" alt="overlay" className="w-full h-full object-contain" />
+                                                </div>
+                                            )}
+                                            {currentScene === 'scene1' && hoveredVideo === 'video4' && (
+                                                <div className="absolute inset-0 pointer-events-none animate-fadeInScale">
+                                                    <img src="1-suxie.png" alt="overlay" className="w-full h-full object-contain" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {currentScene === 'scene2' && (
+                                        <div className="scene-content">
+                                            <StationButton
+                                                centerX="49.44%"
+                                                centerY="24.99%"
+                                                onClick={handleSceneSwitch}
+                                            />
+
+                                            <div
+                                                className="absolute"
+                                                style={{
+                                                    left: '59.5%',
+                                                    top: '46.5%',
+                                                    transform: 'translate(-50%, -50%)',
+                                                    width: '28px',
+                                                    height: '28px',
+                                                    cursor: 'pointer',
+                                                    zIndex: 12
+                                                }}
+                                                onClick={() => setCurrentScene('scene5')}
+                                            >
+                                                <div
+                                                    style={{
+                                                        width: '10px',
+                                                        height: '10px',
+                                                        backgroundColor: '#ff0000',
+                                                        borderRadius: '50%',
+                                                        boxShadow: '0 1px 4px rgba(255, 0, 0, 0.5)',
+                                                        animation: 'bounce 1s ease-in-out infinite',
+                                                        transition: 'transform 0.2s ease'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.target.style.animation = 'none';
+                                                        e.target.style.transform = 'scale(1.3)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.target.style.animation = 'bounce 1s ease-in-out infinite';
+                                                        e.target.style.transform = 'scale(1)';
+                                                    }}
+                                                />
+                                            </div>
+
+                                            <StepHotspot centerX="5%" centerY="92%" width="10%" height="8%" stepImage="第二层级step图片/step-01.jpg" fullImage="第二层级step图片/step1.png" imageLeft="5%" />
+                                            <StepHotspot centerX="21%" centerY="92%" width="10%" height="8%" stepImage="第二层级step图片/step-02.jpg" fullImage="第二层级step图片/step2.png" imageLeft="-15%" />
+                                            <StepHotspot centerX="37%" centerY="92%" width="10%" height="8%" stepImage="第二层级step图片/step-03.jpg" fullImage="第二层级step图片/step3.png" imageLeft="-35%" />
+                                            <StepHotspot centerX="51%" centerY="92%" width="10%" height="8%" stepImage="第二层级step图片/step-04.jpg" fullImage="第二层级step图片/step4.png" imageLeft="-51%" />
+                                            <StepHotspot centerX="62%" centerY="92%" width="10%" height="8%" stepImage="第二层级step图片/step-05.jpg" fullImage="第二层级step图片/step5.png" imageLeft="-18%" />
+                                            <StepHotspot centerX="72%" centerY="92%" width="10%" height="8%" stepImage="第二层级step图片/step-06.jpg" fullImage="第二层级step图片/step6.png" imageLeft="9%" />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+            
